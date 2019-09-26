@@ -54,6 +54,7 @@ int main(int argc, char *argv[]) {
 
     if (argc > 1) { host = argv[1]; }
     if (argc > 2) { port = argv[2]; }
+    if (!name)    { name = "echo_client_test";  }
 
     /* Create and start message queue */
     MessageQueue *mq = mq_create(name, host, port);
