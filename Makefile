@@ -53,7 +53,7 @@ test-echo-client:	bin/test_echo_client
 
 clean:
 	@echo "Removing  objects"
-	@rm -f $(CLIENT_OBJECTS)
+	@rm -f $(CLIENT_OBJECTS) $(TEST_OBJECTS)
 
 	@echo "Removing  libraries"
 	@rm -f $(CLIENT_LIBRARIES)
