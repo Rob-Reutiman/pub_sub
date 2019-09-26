@@ -1,4 +1,4 @@
-/* mq.c: Message Queue Client */
+/* client.c: Message Queue Client */
 
 #include "mq/client.h"
 #include "mq/logging.h"
