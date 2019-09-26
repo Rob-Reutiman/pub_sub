@@ -6,4 +6,4 @@ MAINTAINER  Peter Bui <pbui@nd.edu>
 RUN	    apt update -y
 
 # Run-time dependencies
-RUN	    apt install -y build-essential python3 python3-tornado gawk valgrind
+RUN	    apt install -y build-essential python3 python3-tornado gawk valgrind iproute2
