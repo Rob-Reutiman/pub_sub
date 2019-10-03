@@ -4,8 +4,7 @@ This is [Project 03] of [CSE.30341.FA19].
 
 ## Students
 
-1. Domer McDomerson (dmcdomer@nd.edu)
-2. Belle Fleur (bfleur@nd.edu)
+1. Rob Reutiman (rreutima@nd.edu)
 
 ## Brainstorming
 

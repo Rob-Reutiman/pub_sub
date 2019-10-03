@@ -13,7 +13,16 @@
  * @return  Newly allocated Request structure.
  */
 Request * request_create(const char *method, const char *uri, const char *body) {
-    return NULL;
+
+    Request *r = calloc((size_t)1, sizeof(Request));
+
+    r->method = strdup(method);
+    r->uri = strdup(uri);
+    r->body = strdup(body);
+
+    // next should be Null, correct?
+
+    return r;
 }
 
 /**
@@ -21,6 +30,23 @@ Request * request_create(const char *method, const char *uri, const char *body) 
  * @param   r           Request structure.
  */
 void request_delete(Request *r) {
+
+    if(r->method) {
+        free(r->method);
+    }
+
+    if(r->uri) {
+        free(r->uri);
+    }
+
+    if(r->body) {
+        free(r->body);
+    }
+
+    // need to free next? Pretty sure no
+    
+    free(r);
+
 }
 
 /**
@@ -35,6 +61,12 @@ void request_delete(Request *r) {
  * @param   fs          Socket file stream.
  */
 void request_write(Request *r, FILE *fs) {
+
+    fprintf(fs, "%s %s HTTP/1.0\r\n", r->method, r->uri);
+    fprintf(fs, "Content-Length: %zu\r\n", strlen(r->body));
+    fprintf(fs, "\r\n");
+    fprintf(fs, "%s", r->body);
+
 }
 
 /* vim: set expandtab sts=4 sw=4 ts=8 ft=c: */ 
