@@ -20,8 +20,6 @@ Request * request_create(const char *method, const char *uri, const char *body) 
     r->uri = strdup(uri);
     r->body = strdup(body);
 
-    // next should be Null, correct?
-
     return r;
 }
 

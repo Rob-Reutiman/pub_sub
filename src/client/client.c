@@ -15,7 +15,17 @@
  * @return  Newly allocated Message Queue structure.
  */
 MessageQueue * mq_create(const char *name, const char *host, const char *port) {
-    return NULL;
+
+    MessageQueue *mq = calloc((size_t)1, sizeof(MessageQueue));
+
+    strcpy(mq->name, name);
+    strcpy(mq->host, host);
+    strcpy(mq->port, port);
+
+    mq->incoming = queue_create();
+    mq->outgoing = queue_create();
+
+    return mq;
 }
 
 /**
@@ -23,6 +33,12 @@ MessageQueue * mq_create(const char *name, const char *host, const char *port) {
  * @param   mq      Message Queue structure.
  */
 void mq_delete(MessageQueue *mq) {
+
+    queue_delete(mq->incoming);
+    queue_delete(mq->outgoing);
+    
+    free(mq);
+
 }
 
 /**
@@ -32,6 +48,11 @@ void mq_delete(MessageQueue *mq) {
  * @param   body    Message body to publish.
  */
 void mq_publish(MessageQueue *mq, const char *topic, const char *body) {
+
+ //   Request *r = request_create(mq-> , topic, body);
+
+  //  queue_push(mq->outgoing, r);
+
 }
 
 /**
@@ -40,7 +61,10 @@ void mq_publish(MessageQueue *mq, const char *topic, const char *body) {
  * @return  Newly allocated message body (must be freed).
  */
 char * mq_retrieve(MessageQueue *mq) {
-    return NULL;
+
+    Request *r = queue_pop(mq->incoming);
+    
+    return r->body;
 }
 
 /**
@@ -49,6 +73,9 @@ char * mq_retrieve(MessageQueue *mq) {
  * @param   topic   Topic string to subscribe to.
  **/
 void mq_subscribe(MessageQueue *mq, const char *topic) {
+
+//    mq->incoming = topic?
+
 }
 
 /**
@@ -57,6 +84,9 @@ void mq_subscribe(MessageQueue *mq, const char *topic) {
  * @param   topic   Topic string to unsubscribe from.
  **/
 void mq_unsubscribe(MessageQueue *mq, const char *topic) {
+
+
+
 }
 
 /**
@@ -66,6 +96,10 @@ void mq_unsubscribe(MessageQueue *mq, const char *topic) {
  * @param   mq      Message Queue structure.
  */
 void mq_start(MessageQueue *mq) {
+
+ //   p_thread_create( , NULL, func, func[args]);
+ //   p_thread_create( , NULL, func, func[args]);
+
 }
 
 /**
@@ -74,6 +108,11 @@ void mq_start(MessageQueue *mq) {
  * @param   mq      Message Queue structure.
  */
 void mq_stop(MessageQueue *mq) {
+
+    mq->shutdown = true;
+
+    // send sentinel messages
+
 }
 
 /**
@@ -81,6 +120,11 @@ void mq_stop(MessageQueue *mq) {
  * @param   mq      Message Queue structure.
  */
 bool mq_shutdown(MessageQueue *mq) {
+
+    if(mq->shutdown) {
+        return true;
+    }
+
     return false;
 }
 
