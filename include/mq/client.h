@@ -19,6 +19,10 @@ struct MessageQueue {
     Queue*  outgoing;		// Requests to be sent to server
     Queue*  incoming;		// Requests received from server
     bool    shutdown;		// Whether or not to shutdown
+
+    pthread_t pusher;           // thread to continously send requests
+    pthread_t puller;           // thread to continously recieve requests 
+
 };
 
 MessageQueue *	mq_create(const char *name, const char *host, const char *port);
@@ -34,6 +38,9 @@ void		mq_start(MessageQueue *mq);
 void		mq_stop(MessageQueue *mq);
 
 bool		mq_shutdown(MessageQueue *mq);
+
+void            pull_func(MessageQueue *mq);
+void            push_func(MessageQueue *mq);
 
 #endif
 

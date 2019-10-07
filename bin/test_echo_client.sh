@@ -12,7 +12,7 @@ error() {
 
 find_port() {
     for port in $(seq 9000 9999); do
-    	if ! ss -H4tlpn | awk '{print $4}' | cut -d : -f 2 | grep -q $port; then
+    	if ! ss -4tlpn | awk '{print $4}' | cut -d : -f 2 | grep -q $port; then
     	    echo $port
     	    break
 	fi

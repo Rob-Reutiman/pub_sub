@@ -49,9 +49,12 @@ void mq_delete(MessageQueue *mq) {
  */
 void mq_publish(MessageQueue *mq, const char *topic, const char *body) {
 
- //   Request *r = request_create(mq-> , topic, body);
+    char uri[BUFSIZ];
+    sprintf(uri, "/topic/%s", topic);
 
-  //  queue_push(mq->outgoing, r);
+    Request *r = request_create("PUT", uri, body);
+
+    queue_push(mq->outgoing, r);
 
 }
 
@@ -63,8 +66,11 @@ void mq_publish(MessageQueue *mq, const char *topic, const char *body) {
 char * mq_retrieve(MessageQueue *mq) {
 
     Request *r = queue_pop(mq->incoming);
-    
-    return r->body;
+
+    char* new_body = strdup(r->body);
+    request_delete(r);
+
+    return new_body;
 }
 
 /**
@@ -74,7 +80,12 @@ char * mq_retrieve(MessageQueue *mq) {
  **/
 void mq_subscribe(MessageQueue *mq, const char *topic) {
 
-//    mq->incoming = topic?
+    char uri[BUFSIZ];
+    sprintf(uri, "/subscription/%s/%s", mq->name, topic);
+
+    Request *r = request_create("PUT", uri, NULL);
+
+    queue_push(mq->outgoing, r);
 
 }
 
@@ -85,7 +96,12 @@ void mq_subscribe(MessageQueue *mq, const char *topic) {
  **/
 void mq_unsubscribe(MessageQueue *mq, const char *topic) {
 
+    char uri[BUFSIZ];
+    sprintf(uri, "/subscription/%s/%s", mq->name, topic);
 
+    Request *r = request_create("DELETE", uri, NULL);
+
+    queue_push(mq->outgoing, r);
 
 }
 
@@ -97,8 +113,15 @@ void mq_unsubscribe(MessageQueue *mq, const char *topic) {
  */
 void mq_start(MessageQueue *mq) {
 
- //   p_thread_create( , NULL, func, func[args]);
- //   p_thread_create( , NULL, func, func[args]);
+    int push_r = 0; // r for result
+
+    int pull_r = 0;
+
+    thread_create(&(mq->pusher), NULL, push_func(), mq);
+    thread_join(mq->pusher, (void **)&push_r);
+
+    thread_create(&(mq->pusher), NULL, pull_func(), mq);
+    thread_join(mq->puller, (void **)&pull_r);
 
 }
 
@@ -110,8 +133,14 @@ void mq_start(MessageQueue *mq) {
 void mq_stop(MessageQueue *mq) {
 
     mq->shutdown = true;
-
+    
     // send sentinel messages
+  //  char uri[BUFSIZ];
+  //  sprintf(uri, "/subscription/%s", mq->name);
+
+ //   Request *r = request_create("DELETE", uri, body);
+
+ //   queue_push(mq->outgoing, r);
 
 }
 
@@ -125,7 +154,34 @@ bool mq_shutdown(MessageQueue *mq) {
         return true;
     }
 
-    return false;
+    return false; 
+}
+
+/**
+ * Continuously sends requests from outgoing queue
+ * @param   mq      Message Queue structure.
+ */
+void push_func(MessageQueue *mq) {
+
+    while(!(mq->shutdown)) {
+        
+    }
+
+    return;
+
+}
+
+/**
+ * Continuously sends requests from outgoing queue
+ * @param   mq      Message Queue structure.
+ */
+void pull_func(MessageQueue *mq) {
+
+    while(!(mq->shutdown)) {
+    
+    }
+
+    return;
 }
 
 /* vim: set expandtab sts=4 sw=4 ts=8 ft=c: */

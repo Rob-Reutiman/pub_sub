@@ -10,6 +10,9 @@ Queue * queue_create() {
 
     Queue* q = calloc((size_t)1, sizeof(Queue));
 
+    mutex_init(&(q->lock), NULL);
+    cond_init(&(q->cond), NULL);
+
     return q;
 }
 
@@ -23,12 +26,10 @@ void queue_delete(Queue *q) {
 
         Request *r = q->head;
         q->head = r->next;
-        /*
-        if(q->size = 1) {
+        
+        if(q->size == 1) {
             q->tail = NULL;
-        }
-          do i even need this
-        */
+        } 
 
         request_delete(r);
         q->size--;
@@ -45,18 +46,20 @@ void queue_delete(Queue *q) {
  */
 void queue_push(Queue *q, Request *r) {
 
-    // while(q ! full)
-    // need to spin, lock, test and set, and yield
-    // plus cond_wait so others can go
-    // plus cond_signal so know when ready
+    mutex_lock(&(q->lock));
 
     if(!q->head) {
         q->head = r;
+        q->tail = r;
+    } else {
+        q->tail->next = r;
+        q->tail = r;
     }
-
-    q->tail->next = r;
-    q->tail = r;
+ 
     q->size++;
+
+    cond_signal(&(q->cond));
+    mutex_unlock(&(q->lock));
 
 }
 
@@ -67,14 +70,17 @@ void queue_push(Queue *q, Request *r) {
  */
 Request * queue_pop(Queue *q) {
 
-    //while(q->size == 0); 
-    // need to spin, lock, test and set, and yield
-    // plus cond_wait so others can go
-    // plus cond_signal so know when ready
+    mutex_lock(&(q->lock));
+
+    while(q->size == 0) {
+       cond_wait(&(q->cond), &(q->lock));
+    } 
 
     Request *r = q->head;
     q->head = r->next;
     q->size--;
+
+    mutex_unlock(&(q->lock));
 
     return r;
 }

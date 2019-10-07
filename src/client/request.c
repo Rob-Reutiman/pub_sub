@@ -41,7 +41,7 @@ void request_delete(Request *r) {
         free(r->body);
     }
 
-    // need to free next? Pretty sure no
+    r->next = NULL;
     
     free(r);
 

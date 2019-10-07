@@ -13,6 +13,10 @@ struct Queue {
     Request *head;
     Request *tail;
     size_t   size;
+
+    pthread_mutex_t lock;
+    pthread_cond_t cond;
+
 };
 
 /* Functions */
