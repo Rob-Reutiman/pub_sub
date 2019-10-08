@@ -21,7 +21,8 @@ struct MessageQueue {
     bool    shutdown;		// Whether or not to shutdown
 
     pthread_t pusher;           // thread to continously send requests
-    pthread_t puller;           // thread to continously recieve requests 
+    pthread_t puller;           // thread to continously recieve requests
+    pthread_mutex_t lock;       // lock when we check shutdown 
 
 };
 

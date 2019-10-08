@@ -25,6 +25,8 @@ MessageQueue * mq_create(const char *name, const char *host, const char *port) {
     mq->incoming = queue_create();
     mq->outgoing = queue_create();
 
+    mutex_init(&(mq->lock), NULL);
+
     return mq;
 }
 
@@ -70,6 +72,10 @@ char * mq_retrieve(MessageQueue *mq) {
     char* new_body = strdup(r->body);
     request_delete(r);
 
+/*    if(!strcmp(new_body, "shutdown")) {       // should this go here or elsewhere
+        mq_stop(mq);
+    } */ 
+
     return new_body;
 }
 
@@ -113,15 +119,8 @@ void mq_unsubscribe(MessageQueue *mq, const char *topic) {
  */
 void mq_start(MessageQueue *mq) {
 
-    int push_r = 0; // r for result
-
-    int pull_r = 0;
-
-    thread_create(&(mq->pusher), NULL, push_func(), mq);
-    thread_join(mq->pusher, (void **)&push_r);
-
-    thread_create(&(mq->pusher), NULL, pull_func(), mq);
-    thread_join(mq->puller, (void **)&pull_r);
+    thread_create(&(mq->pusher), NULL, push_func(mq), NULL);  // args??
+    thread_create(&(mq->puller), NULL, pull_func(mq), NULL);
 
 }
 
@@ -134,7 +133,13 @@ void mq_stop(MessageQueue *mq) {
 
     mq->shutdown = true;
     
-    // send sentinel messages
+    int push_r = 0; // r for result
+    int pull_r = 0;
+
+    thread_join(mq->pusher, (void **)&push_r);
+    thread_join(mq->puller, (void **)&pull_r);
+
+    //send sentinel messages
   //  char uri[BUFSIZ];
   //  sprintf(uri, "/subscription/%s", mq->name);
 
@@ -150,11 +155,17 @@ void mq_stop(MessageQueue *mq) {
  */
 bool mq_shutdown(MessageQueue *mq) {
 
-    if(mq->shutdown) {
-        return true;
-    }
+    // lock here and check shutdown
+    
+    bool is_down = false;
 
-    return false; 
+    mutex_lock(&(mq->lock)); 
+    if(mq->shutdown) {
+        is_down = true;
+    }
+    mutex_unlock(&(mq->lock));
+
+    return is_down; 
 }
 
 /**
@@ -163,8 +174,17 @@ bool mq_shutdown(MessageQueue *mq) {
  */
 void push_func(MessageQueue *mq) {
 
-    while(!(mq->shutdown)) {
-        
+    FILE* fs;
+
+    while(!mq_shutdown(mq)) {
+
+        Request *r = queue_pop(mq->outgoing);
+
+        if( (fs = socket_connect(mq->host, mq->port)) ) {
+            request_write(r, fs);
+        } else {
+            queue_push(mq->outgoing, r); // add to outgoing if fail to write to socket
+        }
     }
 
     return;
@@ -172,14 +192,44 @@ void push_func(MessageQueue *mq) {
 }
 
 /**
- * Continuously sends requests from outgoing queue
+ * Continuously recieves requests from incoming queue
  * @param   mq      Message Queue structure.
  */
 void pull_func(MessageQueue *mq) {
 
-    while(!(mq->shutdown)) {
+    FILE* fs;
+
+    while(!mq_shutdown(mq)) {
+        char uri[BUFSIZ];
+        sprintf(uri, "/queue/%s", mq->name);
+
+        Request *r = request_create("GET", uri, NULL);
+
+        if( (fs = socket_connect(mq->host, mq->port)) ) {
+            request_write(r, fs);
+            char response[BUFSIZ];
+            if( !fgets(response, BUFSIZ, fs) ) {
+                // free everything and exit failure..?               
+            } else {
+                if(!strcmp(response, "HTTP/1.0 404 Not Found\nThere is no queue named: %s", mq->name)) {
+
+                    // Header will look like
+                    // HTTP/1.0 404 Not Found
+                    // Content
+
+                } else {
+                    
+                }
+            }
+        } 
+        
+            
+        request_delete(r);
     
     }
+
+    // send get request to socket, make sure valid response
+
 
     return;
 }
