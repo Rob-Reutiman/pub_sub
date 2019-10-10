@@ -40,8 +40,8 @@ void		mq_stop(MessageQueue *mq);
 
 bool		mq_shutdown(MessageQueue *mq);
 
-void            pull_func(MessageQueue *mq);
-void            push_func(MessageQueue *mq);
+void*           pull_func(void *mq);
+void*           push_func(void *mq);
 
 #endif
 

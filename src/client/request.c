@@ -62,12 +62,21 @@ void request_delete(Request *r) {
  */
 void request_write(Request *r, FILE *fs) {
 
-    fprintf(fs, "%s %s HTTP/1.0\r\n", r->method, r->uri);
+    size_t len = 0;
+
     if(r->body) {
-        fprintf(fs, "Content-Length: %zu\r\n", strlen(r->body));
-        fprintf(fs, "\r\n");
-        fprintf(fs, "%s", r->body);
+        len = strlen(r->body) * sizeof(r->body[0]);
     }
+    
+    char buffer[BUFSIZ];
+
+    if(len > 0) {
+        sprintf(buffer, "%s %s HTTP/1.0\r\nContent-Length: %lu\r\n\r\n%s", r->method, r->uri, len, r->body);
+    } else {
+        sprintf(buffer, "%s %s HTTP/1.0\r\n\r\n", r->method, r->uri);
+    }
+
+    fprintf(fs, "%s", buffer);
 
 }
 

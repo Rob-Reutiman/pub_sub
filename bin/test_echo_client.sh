@@ -43,6 +43,7 @@ PORT=$(find_port)
 
 ./bin/mq_server.py --port=$PORT > /dev/null 2>&1 &
 SERVERPID=$!
+sleep 2
 
 valgrind --leak-check=full bin/$FUNCTIONAL localhost $PORT &> $WORKSPACE/test
 if [ $? -ne 0 ] || [ $(awk '/ERROR SUMMARY:/ {print $4}' $WORKSPACE/test) -ne 0 ]; then

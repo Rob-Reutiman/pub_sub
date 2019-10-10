@@ -7,6 +7,9 @@
 
 /* External Functions */
 
+char* host = "localhost";
+char* port = "9620";
+
 /**
  * Create Message Queue withs specified name, host, and port.
  * @param   name        Name of client's queue.
@@ -52,9 +55,10 @@ void mq_delete(MessageQueue *mq) {
 void mq_publish(MessageQueue *mq, const char *topic, const char *body) {
 
     char uri[BUFSIZ];
+    char* method = "PUT";
     sprintf(uri, "/topic/%s", topic);
 
-    Request *r = request_create("PUT", uri, body);
+    Request *r = request_create(method, uri, body);
 
     queue_push(mq->outgoing, r);
 
@@ -72,10 +76,6 @@ char * mq_retrieve(MessageQueue *mq) {
     char* new_body = strdup(r->body);
     request_delete(r);
 
-/*    if(!strcmp(new_body, "shutdown")) {       // should this go here or elsewhere
-        mq_stop(mq);
-    } */ 
-
     return new_body;
 }
 
@@ -88,8 +88,9 @@ void mq_subscribe(MessageQueue *mq, const char *topic) {
 
     char uri[BUFSIZ];
     sprintf(uri, "/subscription/%s/%s", mq->name, topic);
+    char* method = "PUT";
 
-    Request *r = request_create("PUT", uri, NULL);
+    Request *r = request_create(method, uri, NULL);
 
     queue_push(mq->outgoing, r);
 
@@ -104,8 +105,9 @@ void mq_unsubscribe(MessageQueue *mq, const char *topic) {
 
     char uri[BUFSIZ];
     sprintf(uri, "/subscription/%s/%s", mq->name, topic);
+    char* method = "DELETE";
 
-    Request *r = request_create("DELETE", uri, NULL);
+    Request *r = request_create(method, uri, NULL);
 
     queue_push(mq->outgoing, r);
 
@@ -119,8 +121,8 @@ void mq_unsubscribe(MessageQueue *mq, const char *topic) {
  */
 void mq_start(MessageQueue *mq) {
 
-    thread_create(&(mq->pusher), NULL, push_func(mq), NULL);  // args??
-    thread_create(&(mq->puller), NULL, pull_func(mq), NULL);
+    thread_create(&(mq->pusher), NULL, &push_func, (void*)mq);  
+    thread_create(&(mq->puller), NULL, &pull_func, (void*)mq);
 
 }
 
@@ -172,7 +174,9 @@ bool mq_shutdown(MessageQueue *mq) {
  * Continuously sends requests from outgoing queue
  * @param   mq      Message Queue structure.
  */
-void push_func(MessageQueue *mq) {
+void* push_func(void *m) {
+
+    MessageQueue *mq =(MessageQueue *)m;
 
     FILE* fs;
 
@@ -182,56 +186,76 @@ void push_func(MessageQueue *mq) {
 
         if( (fs = socket_connect(mq->host, mq->port)) ) {
             request_write(r, fs);
+            printf("push request written\n\n");
+
+// do i need this
+
+            char response[BUFSIZ];
+            if( !fgets(response, BUFSIZ, fs) ) {
+                // free everything and exit failure..?
+            } else {
+                char* status = strtok(response, "\n");
+                if(!strcmp(status, "HTTP/1.0 404 Not Found")) {                   
+                    // Content message
+                    // what do i do here
+                    queue_push(mq->outgoing, r); 
+                }
+            } 
+// to here
         } else {
             queue_push(mq->outgoing, r); // add to outgoing if fail to write to socket
         }
     }
 
-    return;
-
+    return (void *) 0;
 }
 
 /**
  * Continuously recieves requests from incoming queue
  * @param   mq      Message Queue structure.
  */
-void pull_func(MessageQueue *mq) {
+void* pull_func(void *m) {
+
+    MessageQueue *mq = (MessageQueue *)m;
 
     FILE* fs;
 
-    while(!mq_shutdown(mq)) {
-        char uri[BUFSIZ];
-        sprintf(uri, "/queue/%s", mq->name);
+    char uri[BUFSIZ];
+    sprintf(uri, "/queue/%s", mq->name);
+    char* method= "GET";
 
-        Request *r = request_create("GET", uri, NULL);
+    while(!mq_shutdown(mq)) {
+
+        Request *r = request_create(method, uri, NULL);
 
         if( (fs = socket_connect(mq->host, mq->port)) ) {
             request_write(r, fs);
             char response[BUFSIZ];
             if( !fgets(response, BUFSIZ, fs) ) {
-                // free everything and exit failure..?               
+                // goto fail
             } else {
-                if(!strcmp(response, "HTTP/1.0 404 Not Found\nThere is no queue named: %s", mq->name)) {
-
-                    // Header will look like
-                    // HTTP/1.0 404 Not Found
-                    // Content
+                printf("%s", response);
+                if(!strstr(response, "200")) { 
+                    // i think nothing goes here
 
                 } else {
-                    
+                    printf("this is chill\n");
+                 /*   char* body;
+                    while (fgets(body, BUFSIZ, fs)) { // we wanna run her til bod
+
+                    }
+                    Request* to_add = request_create(method, uri, body);
+                    queue_push(mq->incoming, to_add); */
                 }
-            }
+            } 
         } 
-        
             
         request_delete(r);
     
     }
 
-    // send get request to socket, make sure valid response
+    return (void *)0;
 
-
-    return;
 }
 
 /* vim: set expandtab sts=4 sw=4 ts=8 ft=c: */
