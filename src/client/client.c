@@ -73,6 +73,11 @@ char * mq_retrieve(MessageQueue *mq) {
 
     Request *r = queue_pop(mq->incoming);
 
+    if(!strcmp(r->body, "shutdown")) {
+        request_delete(r);
+        return NULL;
+    }
+
     char* new_body = strdup(r->body);
     request_delete(r);
 
@@ -121,6 +126,9 @@ void mq_unsubscribe(MessageQueue *mq, const char *topic) {
  */
 void mq_start(MessageQueue *mq) {
 
+    char* topic = "shutdown";
+    mq_subscribe(mq, topic);
+
     thread_create(&(mq->pusher), NULL, &push_func, (void*)mq);  
     thread_create(&(mq->puller), NULL, &pull_func, (void*)mq);
 
@@ -133,21 +141,16 @@ void mq_start(MessageQueue *mq) {
  */
 void mq_stop(MessageQueue *mq) {
 
- //   mutex_lock(&(mq->lock));
+    mutex_lock(&(mq->lock));
     mq->shutdown = true;
-  //  mutex_unlock(&(mq->lock));
+    mutex_unlock(&(mq->lock));
     
     int push_r = 0; // r for result
     int pull_r = 0;
 
     //send sentinel messages
-    char uri[BUFSIZ];
     char* topic = "shutdown";
-
-    sprintf(uri, "/topic/%s", topic);
-    mq_publish(mq, uri, topic);
-
-    mq_subscribe(mq, topic);
+    mq_publish(mq, topic, topic);
 
     thread_join(mq->pusher, (void **)&push_r);
     thread_join(mq->puller, (void **)&pull_r);
@@ -189,20 +192,8 @@ void* push_func(void *m) {
 
         if( (fs = socket_connect(mq->host, mq->port)) ) {
             request_write(r, fs);
-
-/*            char response[BUFSIZ];
-            if( !fgets(response, BUFSIZ, fs) ) {
-                // free everything and exit failure..?
-            } else {
-                char* status = strtok(response, "\n");
-                if(!strcmp(status, "HTTP/1.0 404 Not Found")) {                   
-                    // Content message
-                    // what do i do here
-                    queue_push(mq->outgoing, r); 
-                }
-            }  */
-
             fclose(fs);
+            request_delete(r);
 
         } else {
             queue_push(mq->outgoing, r); // add to outgoing if fail to write to socket
@@ -234,25 +225,22 @@ void* pull_func(void *m) {
             request_write(r, fs);
             char response[BUFSIZ];
             if( !fgets(response, BUFSIZ, fs) ) {
-                // goto fail
+                
             } else {
                 if(!strstr(response, "200")) { 
-                    // i think nothing goes here
 
                 } else {
-                    printf("%s", response);
                     char body[BUFSIZ];
-                    while (fgets(body, BUFSIZ, fs)) { // we wanna run til bod
+                    while(fgets(body, BUFSIZ, fs)) {
 
                     }
-                    printf("%s", body);
-          /*          if(strstr(body, "shutdown") != NULL) {
-                        mq_stop(mq);
-                    } */
-                    Request* to_add = request_create(method, uri, body);
-                    queue_push(mq->incoming, to_add); 
+                    if(strlen(body) > 0) {
+                        Request* to_add = request_create(method, uri, body);
+                        queue_push(mq->incoming, to_add); 
+                    }
                 }
             }
+
            fclose(fs); 
         } 
             
