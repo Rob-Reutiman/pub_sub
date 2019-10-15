@@ -49,7 +49,7 @@ void *outgoing_thread(void *arg) {
         /* Post message */
 
         char message[BUFSIZ];
-        sprintf(message, "%s/%s", user, message);
+        sprintf(message, "%s/%s", user, body);
 
         mq_publish(mq, TOPIC, message);
     }
