@@ -56,9 +56,14 @@ brainstorming questions are not required.
 
 > Link to Video demonstration of user application.
 
+https://youtu.be/8hBRz3OZbkk
+
 ## Errata
 
 > Describe any known errors, bugs, or deviations from the requirements.
+
+For some reason, chat application displays user's name twice when program
+is initiated.
 
 ## Extra Credit
 
