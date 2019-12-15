@@ -12,7 +12,7 @@ error() {
 
 find_port() {
     for port in $(seq 9000 9999); do
-    	if ! ss -H4tlpn | awk '{print $4}' | cut -d : -f 2 | grep -q $port; then
+    	if ! ss -4tlpn | awk '{print $4}' | cut -d : -f 2 | grep -q $port; then
     	    echo $port
     	    break
 	fi
@@ -43,6 +43,7 @@ PORT=$(find_port)
 
 ./bin/mq_server.py --port=$PORT > /dev/null 2>&1 &
 SERVERPID=$!
+sleep 2
 
 valgrind --leak-check=full bin/$FUNCTIONAL localhost $PORT &> $WORKSPACE/test
 if [ $? -ne 0 ] || [ $(awk '/ERROR SUMMARY:/ {print $4}' $WORKSPACE/test) -ne 0 ]; then

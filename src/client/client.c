@@ -7,6 +7,9 @@
 
 /* External Functions */
 
+char* host = "localhost";
+char* port = "9620";
+
 /**
  * Create Message Queue withs specified name, host, and port.
  * @param   name        Name of client's queue.
@@ -15,7 +18,19 @@
  * @return  Newly allocated Message Queue structure.
  */
 MessageQueue * mq_create(const char *name, const char *host, const char *port) {
-    return NULL;
+
+    MessageQueue *mq = calloc((size_t)1, sizeof(MessageQueue));
+
+    strcpy(mq->name, name);
+    strcpy(mq->host, host);
+    strcpy(mq->port, port);
+
+    mq->incoming = queue_create();
+    mq->outgoing = queue_create();
+
+    mutex_init(&(mq->lock), NULL);
+
+    return mq;
 }
 
 /**
@@ -23,6 +38,12 @@ MessageQueue * mq_create(const char *name, const char *host, const char *port) {
  * @param   mq      Message Queue structure.
  */
 void mq_delete(MessageQueue *mq) {
+
+    queue_delete(mq->incoming);
+    queue_delete(mq->outgoing);
+    
+    free(mq);
+
 }
 
 /**
@@ -32,6 +53,15 @@ void mq_delete(MessageQueue *mq) {
  * @param   body    Message body to publish.
  */
 void mq_publish(MessageQueue *mq, const char *topic, const char *body) {
+
+    char uri[BUFSIZ];
+    char* method = "PUT";
+    sprintf(uri, "/topic/%s", topic);
+
+    Request *r = request_create(method, uri, body);
+
+    queue_push(mq->outgoing, r);
+
 }
 
 /**
@@ -40,7 +70,18 @@ void mq_publish(MessageQueue *mq, const char *topic, const char *body) {
  * @return  Newly allocated message body (must be freed).
  */
 char * mq_retrieve(MessageQueue *mq) {
-    return NULL;
+
+    Request *r = queue_pop(mq->incoming);
+
+    if(!strcmp(r->body, "shutdown")) {
+        request_delete(r);
+        return NULL;
+    }
+
+    char* new_body = strdup(r->body);
+    request_delete(r);
+
+    return new_body;
 }
 
 /**
@@ -49,6 +90,15 @@ char * mq_retrieve(MessageQueue *mq) {
  * @param   topic   Topic string to subscribe to.
  **/
 void mq_subscribe(MessageQueue *mq, const char *topic) {
+
+    char uri[BUFSIZ];
+    sprintf(uri, "/subscription/%s/%s", mq->name, topic);
+    char* method = "PUT";
+
+    Request *r = request_create(method, uri, NULL);
+
+    queue_push(mq->outgoing, r);
+
 }
 
 /**
@@ -57,6 +107,15 @@ void mq_subscribe(MessageQueue *mq, const char *topic) {
  * @param   topic   Topic string to unsubscribe from.
  **/
 void mq_unsubscribe(MessageQueue *mq, const char *topic) {
+
+    char uri[BUFSIZ];
+    sprintf(uri, "/subscription/%s/%s", mq->name, topic);
+    char* method = "DELETE";
+
+    Request *r = request_create(method, uri, NULL);
+
+    queue_push(mq->outgoing, r);
+
 }
 
 /**
@@ -66,6 +125,13 @@ void mq_unsubscribe(MessageQueue *mq, const char *topic) {
  * @param   mq      Message Queue structure.
  */
 void mq_start(MessageQueue *mq) {
+
+    char* topic = "shutdown";
+    mq_subscribe(mq, topic);
+
+    thread_create(&(mq->pusher), NULL, &push_func, (void*)mq);  
+    thread_create(&(mq->puller), NULL, &pull_func, (void*)mq);
+
 }
 
 /**
@@ -74,6 +140,21 @@ void mq_start(MessageQueue *mq) {
  * @param   mq      Message Queue structure.
  */
 void mq_stop(MessageQueue *mq) {
+
+    mutex_lock(&(mq->lock));
+    mq->shutdown = true;
+    mutex_unlock(&(mq->lock));
+    
+    int push_r = 0; // r for result
+    int pull_r = 0;
+
+    //send sentinel messages
+    char* topic = "shutdown";
+    mq_publish(mq, topic, topic);
+
+    thread_join(mq->pusher, (void **)&push_r);
+    thread_join(mq->puller, (void **)&pull_r);
+
 }
 
 /**
@@ -81,7 +162,94 @@ void mq_stop(MessageQueue *mq) {
  * @param   mq      Message Queue structure.
  */
 bool mq_shutdown(MessageQueue *mq) {
-    return false;
+
+    // lock here and check shutdown
+    
+    bool is_down = false;
+
+    mutex_lock(&(mq->lock)); 
+    if(mq->shutdown) {
+        is_down = true;
+    }
+    mutex_unlock(&(mq->lock));
+
+    return is_down; 
+}
+
+/**
+ * Continuously sends requests from outgoing queue
+ * @param   mq      Message Queue structure.
+ */
+void* push_func(void *m) {
+
+    MessageQueue *mq =(MessageQueue *)m;
+
+    FILE* fs;
+
+    while(!mq_shutdown(mq)) {
+
+        Request *r = queue_pop(mq->outgoing);
+
+        if( (fs = socket_connect(mq->host, mq->port)) ) {
+            request_write(r, fs);
+            fclose(fs);
+            request_delete(r);
+
+        } else {
+            queue_push(mq->outgoing, r); // add to outgoing if fail to write to socket
+        }
+    }
+
+    return (void *) 0;
+}
+
+/**
+ * Continuously recieves requests from incoming queue
+ * @param   mq      Message Queue structure.
+ */
+void* pull_func(void *m) {
+
+    MessageQueue *mq = (MessageQueue *)m;
+
+    FILE* fs;
+
+    char uri[BUFSIZ];
+    sprintf(uri, "/queue/%s", mq->name);
+    char* method= "GET";
+
+    while(!mq_shutdown(mq)) {
+
+        Request *r = request_create(method, uri, NULL);
+
+        if( (fs = socket_connect(mq->host, mq->port)) ) {
+            request_write(r, fs);
+            char response[BUFSIZ];
+            if( !fgets(response, BUFSIZ, fs) ) {
+                
+            } else {
+                if(!strstr(response, "200")) { 
+
+                } else {
+                    char body[BUFSIZ];
+                    while(fgets(body, BUFSIZ, fs)) {
+
+                    }
+                    if(strlen(body) > 0) {
+                        Request* to_add = request_create(method, uri, body);
+                        queue_push(mq->incoming, to_add); 
+                    }
+                }
+            }
+
+           fclose(fs); 
+        } 
+            
+        request_delete(r);
+    
+    }
+
+    return (void *)0;
+
 }
 
 /* vim: set expandtab sts=4 sw=4 ts=8 ft=c: */

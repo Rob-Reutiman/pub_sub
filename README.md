@@ -4,8 +4,7 @@ This is [Project 03] of [CSE.30341.FA19].
 
 ## Students
 
-1. Domer McDomerson (dmcdomer@nd.edu)
-2. Belle Fleur (bfleur@nd.edu)
+1. Rob Reutiman (rreutima@nd.edu)
 
 ## Brainstorming
 
@@ -57,9 +56,14 @@ brainstorming questions are not required.
 
 > Link to Video demonstration of user application.
 
+https://youtu.be/8hBRz3OZbkk
+
 ## Errata
 
 > Describe any known errors, bugs, or deviations from the requirements.
+
+For some reason, chat application displays user's name twice when program
+is initiated.
 
 ## Extra Credit
 
