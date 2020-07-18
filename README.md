@@ -1,73 +1,15 @@
-# Project 03: Message Queue
+# Operating Systems Project 03: Message Queue
 
-This is [Project 03] of [CSE.30341.FA19].
+For this project, I created a basic chat application through a message queue client that interacts with a rudimentary pub/sub system using POSIX threads and network sockets via a RESTful API. Clients in the pub/sub system connect to this server and perform the following operations:
 
-## Students
+(1) SUBSCRIBE: This associates a queue to a particular topic.
 
-1. Rob Reutiman (rreutima@nd.edu)
+Subscribing to a topic means that any messages sent to the {TOPIC} topic will be automatically forwarded to the {SUBSCIRBER} queue. Clients can subscribe to as many topics as they wish. However, they will only receive messages after they have subscribed (any messages sent to the topic before they subscribe) will not be accessible.
 
-## Brainstorming
+(2) PUBLISH: This posts a message to a particular topic.
 
-The following are questions that should help you in thinking about how to
-approach implementing [Project 03].  For this project, responses to these
-brainstorming questions are not required.
+The client sends a HTTP PUT command to publish a message to the {TOPIC} topic with a message body: {MESSAGE}. Internally, the pub/sub server will see that {SUBSCRIBER} is subscribed to the the {TOPIC} topic, and thus it will forward the message to the {SUBSCRIBER} queue.
 
-### Request
+(3) RETRIEVE: This fetches one message in the queue.
 
-1. What data must be allocated and deallocated for each `Request` structure?
-
-2. What does a valid **HTTP** request look like?
-
-### Queue
-
-1. What data must be allocated and deallocated for each `Queue` structure?
-
-2. How will you implement **mutal exclusion**?
-
-3. How will you implement **signaling**?
-
-3. What are the the **critical sections**?
-
-### Client
-
-1. What data must be allocated and deallocated for each `MessageQueue`
-   structure?
-
-2. What should happen when the user **publishes** a message?
-
-3. What should happen when the user **retrieves** a message?
-
-4. What should happen when the user **subscribes** to a topic?
-
-5. What should happen when the user **unsubscribes** to a topic?
-
-6. What needs to happen when the user **starts** the `MessageQueue`?
-
-7. What needs to happen when the user **shuts down** the `MessageQueue`?
-
-8. How many internal **threads** are required?
-
-9. What is the purpose of each internal **thread**?
-
-10. What `MessageQueue` attribute needs to be **protected** from **concurrent**
-    access?
-
-## Demonstration
-
-> Link to Video demonstration of user application.
-
-https://youtu.be/8hBRz3OZbkk
-
-## Errata
-
-> Describe any known errors, bugs, or deviations from the requirements.
-
-For some reason, chat application displays user's name twice when program
-is initiated.
-
-## Extra Credit
-
-> Describe what extra credit (if any) that you implemented.
-
-[Project 03]:       https://www3.nd.edu/~pbui/teaching/cse.30341.fa19/project03.html
-[CSE.30341.FA19]:   https://www3.nd.edu/~pbui/teaching/cse.30341.fa19/
+The client sends a HTTP GET command to retrieve a message from the {SUBSCRIBER} queue. Internally, the pub/sub server will fetch one message from the {SUBSCRIBER} queue and return it as the response to the HTTP request. When clients retrieve a message but the corresponding queue is empty, then the pub/sub server will delay responding to the request until there is something in the queue. This means that performing a retrieve operation is a blocking action for the client.
