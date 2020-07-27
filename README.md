@@ -1,4 +1,4 @@
-# Operating Systems Project 03: Message Queue
+# OS Project 03
 
 For this project, I created a basic chat application that entails a message queue client interacting with a rudimentary pub/sub system using POSIX threads and network sockets via a RESTful API. Clients in the pub/sub system connect to this server and perform the following operations:
 
